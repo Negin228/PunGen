@@ -47,12 +47,16 @@ def ease_out(t):
     return 1 - (1 - t) ** 3
 
 def get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """Try common system font paths; fall back to PIL default."""
     paths = [
+        # Windows fonts
+        f"C:/Windows/Fonts/{'arialbd' if bold else 'arial'}.ttf",
+        f"C:/Windows/Fonts/{'verdanab' if bold else 'verdana'}.ttf",
+        f"C:/Windows/Fonts/impact.ttf",
+        # Custom font (optional - download Bangers from Google Fonts)
+        "assets/Bangers-Regular.ttf",
+        # Linux fallbacks
         f"/usr/share/fonts/truetype/liberation/LiberationSans-{'Bold' if bold else 'Regular'}.ttf",
-        f"/usr/share/fonts/truetype/ubuntu/Ubuntu-{'B' if bold else 'R'}.ttf",
         f"/usr/share/fonts/truetype/dejavu/DejaVuSans{'Bold' if bold else ''}.ttf",
-        "assets/Bangers-Regular.ttf",   # optional: download from Google Fonts
     ]
     for p in paths:
         if os.path.exists(p):
@@ -60,7 +64,11 @@ def get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
                 return ImageFont.truetype(p, size)
             except Exception:
                 continue
-    return ImageFont.load_default()
+    # Pillow 10+ supports size on load_default
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
 
 def text_width(draw: ImageDraw.Draw, text: str, font) -> int:
     bb = draw.textbbox((0, 0), text, font=font)
