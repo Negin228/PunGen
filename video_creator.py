@@ -14,22 +14,25 @@ W, H      = 720, 1280
 FPS       = 30
 DURATION  = 10.0
 
-# Premium Content Palette
-COLOR_BG       = (244, 246, 249)  # Light studio gray
-COLOR_CARD_Q   = (18, 22, 36)     # Deep obsidian navy
-COLOR_TEXT_Q   = (255, 255, 255)  
-COLOR_CARD_A   = (255, 59, 59)    # Vibrant high-energy red
-COLOR_TEXT_A   = (255, 255, 255)  
-COLOR_TEXT_MIN = (90, 100, 115)   # Slate gray for UI accents
-COLOR_SHADOW   = (0, 0, 0, 20)    # Soft alpha drop shadow
+# Re-engineered "Creator Premium" Color Palette
+COLOR_BG        = (242, 245, 250)  # Bright, clean studio white
+COLOR_CARD_Q    = (25, 28, 50)     # Deep royal obsidian navy
+COLOR_TEXT_Q    = (255, 255, 255)  
+COLOR_CARD_A    = (255, 60, 75)    # High-intensity coral red
+COLOR_TEXT_A    = (255, 255, 255)  
+COLOR_HIGHLIGHT = (255, 235, 75)   # Punchy electric yellow for the key punchline words
+COLOR_TEXT_MIN  = (100, 112, 135)  # Soft slate gray
+COLOR_SHADOW    = (15, 20, 45, 30) # Richer, deep soft shadow overlay
 
 
 def get_modern_font(size):
+    """Prioritizes high-retention geometric video fonts."""
     paths = [
-        "C:/Windows/Fonts/ariblk.ttf",
-        "C:/Windows/Fonts/trebucbd.ttf",
+        "assets/LilitaOne-Regular.ttf",      # Highly recommended to download for shorts!
+        "assets/Montserrat-Black.ttf",
+        "C:/Windows/Fonts/ariblk.ttf",       # Arial Black (Solid fallback)
+        "C:/Windows/Fonts/trebucbd.ttf",     
         "/Library/Fonts/Arial Black.ttf",
-        "/Library/Fonts/Trebuchet MS Bold.ttf",
         f"/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     ]
     for p in paths:
@@ -40,6 +43,9 @@ def get_modern_font(size):
 
 def clean_emojis(text):
     return re.sub(r'[^\x00-\x7F]+', '', text).strip()
+
+def lerp_color(c1, c2, t):
+    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
 
 def tw(draw, text, font):
     bb = draw.textbbox((0, 0), text, font=font)
@@ -63,46 +69,59 @@ def get_wrapped_lines(draw, text, font, max_w):
         lines.append(" ".join(cur))
     return lines
 
-def draw_polished_card(img, lines, visible_word_count, center_y, font, text_color, card_color, max_w, padding=44):
-    """Draws a rounded container with clean line-height spacing, smooth dropshadows, and word-by-word reveals."""
+def draw_polished_card(img, lines, visible_word_count, center_y, font, text_color, card_color, max_w, padding=44, is_punchline=False):
     draw = ImageDraw.Draw(img)
     
-    # Increased line-height multiplier from 1.3 to 1.45 for breathable, professional typography
     lh = int(th(draw, font) * 1.45)
     card_h = (lh * len(lines)) + (padding * 2) - int(th(draw, font) * 0.45)
     card_w = max_w
-    
+
     x0 = (W - card_w) // 2
     y0 = center_y - (card_h // 2)
     x1 = x0 + card_w
     y1 = y0 + card_h
     
-    # 1. Generate a modern blurred drop-shadow layer underneath
+    # 1. Soft Ambient Blur Shadow Layer
     shadow_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     s_draw = ImageDraw.Draw(shadow_img)
-    s_draw.rounded_rectangle([x0 + 2, y0 + 6, x1 + 2, y1 + 6], radius=28, fill=COLOR_SHADOW)
-    shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=8))
+    s_draw.rounded_rectangle([x0 + 2, y0 + 8, x1 + 2, y1 + 8], radius=32, fill=COLOR_SHADOW)
+    shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=10))
     img.paste(shadow_img, (0, 0), shadow_img)
     
-    # 2. Base Solid UI Card Container
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=28, fill=card_color)
+    # 2. Base Solid Rounded Card Frame
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=32, fill=card_color)
     
-    # 3. Render strings without layout popping
+    # 3. Dynamic Word-by-Word Mapping
     words_passed = 0
     curr_y = y0 + padding
     
     for line in lines:
         line_words = line.split()
-        words_to_render_in_line = []
+        words_to_render = []
         
         for word in line_words:
             if words_passed < visible_word_count:
-                words_to_render_in_line.append(word)
+                words_to_render.append(word)
                 words_passed += 1
                 
-        render_text = " ".join(words_to_render_in_line)
-        
-        if render_text:
+        if not words_to_render:
+            curr_y += lh
+            continue
+
+        # Advanced Typography Treatment: Highlight the last 2 words of the punchline
+        if is_punchline and words_passed >= visible_word_count:
+            # Render lines with mixed highlight colors seamlessly
+            full_line_text = " ".join(words_to_render)
+            start_x = x0 + (card_w - tw(draw, full_line_text, font)) // 2
+            
+            for idx, word in enumerate(words_to_render):
+                # If it's one of the final two words of the joke, make it Pop!
+                use_color = COLOR_HIGHLIGHT if (len(words_to_render) - idx <= 2) else text_color
+                draw.text((start_x, curr_y), word, font=font, fill=use_color)
+                start_x += tw(draw, word + " ", font)
+        else:
+            # Standard smooth monochrome text block
+            render_text = " ".join(words_to_render)
             x_text = x0 + (card_w - tw(draw, render_text, font)) // 2
             draw.text((x_text, curr_y), render_text, font=font, fill=text_color)
             
@@ -113,11 +132,10 @@ def create_pun_video(question, answer, emojis, music_path, output_path):
     clean_q = clean_emojis(question)
     clean_a = clean_emojis(answer)
 
-    f_large = get_modern_font(44)  
-    f_mid   = get_modern_font(40)
+    # Bumped font size slightly for higher visual scale weight
+    f_large = get_modern_font(46)  
     f_small = get_modern_font(26)
 
-    # Static pre-calculation structural blueprints
     base_img = Image.new("RGB", (W, H))
     base_draw = ImageDraw.Draw(base_img)
     q_lines = get_wrapped_lines(base_draw, clean_q, f_large, W - 120)
@@ -126,29 +144,27 @@ def create_pun_video(question, answer, emojis, music_path, output_path):
     total_q_words = len(clean_q.split())
     total_a_words = len(clean_a.split())
 
+    y_anchor_q = int(H * 0.36)
+    y_anchor_a = int(H * 0.66)
+
     def make_frame(t):
         img = Image.new("RGB", (W, H), COLOR_BG)
         draw = ImageDraw.Draw(img)
 
-        # Upper Minimal Top-Bar
+        # Upper Minimal Branding Strip
         x_hdr = (W - tw(draw, "DAILY PUN CHALLENGE", f_small)) // 2
         draw.text((x_hdr, int(H * 0.12)), "DAILY PUN CHALLENGE", font=f_small, fill=COLOR_TEXT_MIN)
         draw.line([(W//2 - 35, int(H * 0.16)), (W//2 + 35, int(H * 0.16))], fill=COLOR_CARD_A, width=4)
 
-        # --- PHASE 1 & 2: Setup Phase (0.0s - 7.2s) ---
+        # --- PHASE 1 & 2: Main Setup/Countdown ---
         if t < 7.2:
-            # Word reveal timeline scaling
             reveal_duration = 4.2
             progress = min(1.0, t / reveal_duration)
             visible_q_words = max(1, int(progress * total_q_words))
             
-            # Draw Question Card completely stationary at center
-            draw_polished_card(
-                img, q_lines, visible_q_words, int(H * 0.38), 
-                f_large, COLOR_TEXT_Q, COLOR_CARD_Q, W - 110
-            )
+            draw_polished_card(img, q_lines, visible_q_words, y_anchor_q, f_large, COLOR_TEXT_Q, COLOR_CARD_Q, W - 110)
 
-            # Circular Snappy Timer Tag
+            # Circular Countdown Tag Overlay
             if t >= 4.8:
                 pt = t - 4.8
                 count = 2 - int(pt / 1.2)
@@ -165,33 +181,38 @@ def create_pun_video(question, answer, emojis, music_path, output_path):
                 y_cnt = cy - (th(draw, f_count) // 2) - 4
                 draw.text((x_cnt, y_cnt), str(count), font=f_count, fill=(255, 255, 255))
 
-        # --- PHASE 3: Clean Punchline Reveal & Outro ---
+        # --- PHASE 3: Punchline Pop & Dynamic CTA Fade ---
         else:
             pt = t - 7.2
             
-            # Question smoothly shifts upwards slightly to optimize phone screen spaces
+            # Draw locked question card base
+            draw_polished_card(img, q_lines, total_q_words, y_anchor_q, f_large, COLOR_TEXT_Q, COLOR_CARD_Q, W - 110)
+            
+            # Elastic Spring-Overshoot Calculation for the Answer Entry
+            # It briefly overshoots its target height by 12 pixels before settling cleanly
+            slide_speed = 6.0
+            if pt * slide_speed < math.pi:
+                # Sine-wave ease curve with an expansion bump
+                bounce_factor = math.sin(pt * slide_speed) * 15.0
+                current_y_a = y_anchor_a + int(45 * (1.0 - (pt * slide_speed / math.pi))) - int(bounce_factor)
+            else:
+                current_y_a = y_anchor_a
+            
             draw_polished_card(
-                img, q_lines, total_q_words, int(H * 0.30), 
-                f_mid, COLOR_TEXT_Q, COLOR_CARD_Q, W - 110
+                img, a_lines, total_a_words, current_y_a, 
+                f_large, COLOR_TEXT_A, COLOR_CARD_A, W - 110, is_punchline=True
             )
             
-            # Smooth ease-out animation curve calculation for punchline reveal card
-            scale = min(1.0, pt * 6.0) 
-            bounce_w = int((W - 110) * (0.85 + 0.15 * math.sin(scale * math.pi / 2)))
+            # Call to Action Text Fade-in Smooth Transition
+            fade_progress = min(1.0, pt * 3.0)
+            cta_curr_color = lerp_color(COLOR_BG, COLOR_TEXT_MIN, fade_progress)
             
-            if bounce_w > 50:
-                draw_polished_card(
-                    img, a_lines, total_a_words, int(H * 0.64), 
-                    f_large, COLOR_TEXT_A, COLOR_CARD_A, bounce_w
-                )
-            
-            # Bottom call to action display
-            if pt > 0.4:
-                x_cta = (W - tw(draw, "LIKE & SUBSCRIBE FOR MORE", f_small)) // 2
-                draw.text((x_cta, int(H * 0.88)), "LIKE & SUBSCRIBE FOR MORE", font=f_small, fill=COLOR_TEXT_MIN)
+            x_cta = (W - tw(draw, "LIKE & SUBSCRIBE FOR MORE", f_small)) // 2
+            draw.text((x_cta, int(H * 0.88)), "LIKE & SUBSCRIBE FOR MORE", font=f_small, fill=cta_curr_color)
 
         return np.array(img)
 
+    # Video Compiler Loop Pipeline
     clip = VideoClip(make_frame, duration=DURATION)
 
     if music_path and os.path.exists(music_path):
