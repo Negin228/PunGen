@@ -2,14 +2,13 @@ name: Daily Pun Videos
 
 on:
   schedule:
-    - cron: "0 14 * * *"   # 9 AM ET  (14:00 UTC)
-    - cron: "0 22 * * *"   # 5 PM ET  (22:00 UTC)
-  workflow_dispatch:        # lets you trigger manually from GitHub UI
+    - cron: "0 14 * * *"   # 9 AM ET
+    - cron: "0 22 * * *"   # 5 PM ET
+  workflow_dispatch:
 
 jobs:
   post-videos:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -18,7 +17,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system deps (ffmpeg + fonts)
+      - name: Install system deps
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg fonts-liberation
@@ -26,7 +25,6 @@ jobs:
       - name: Install Python deps
         run: pip install -r requirements.txt
 
-      # Secrets set in GitHub → Settings → Secrets and variables → Actions
       - name: Write OAuth token
         run: echo "$YOUTUBE_TOKEN" | base64 -d > token.pickle
         env:
@@ -34,11 +32,6 @@ jobs:
 
       - name: Write client_secrets.json
         run: echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > client_secrets.json
-
-      - name: Write funny_music.mp3
-        run: echo "$MUSIC_B64" | base64 -d > assets/funny_music.mp3
-        env:
-          MUSIC_B64: ${{ secrets.MUSIC_B64 }}
 
       - name: Run agent
         env:
