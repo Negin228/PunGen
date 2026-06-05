@@ -2,12 +2,13 @@
 youtube_uploader.py
 Uploads a video file to YouTube using the YouTube Data API v3.
 
-First run: opens a browser for OAuth consent → saves token.pickle.
-Subsequent runs: uses the saved token (auto-refreshed).
+Local run: opens a browser for OAuth consent → saves token.pickle.
+GitHub Actions run: uses base64 secrets from environment variables.
 """
 
 import os
 import pickle
+import base64
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -16,30 +17,61 @@ from googleapiclient.http import MediaFileUpload
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_FILE = "token.pickle"
-CLIENT_SECRETS = "client_secrets.json"   # download from Google Cloud Console
-
+CLIENT_SECRETS = "client_secrets.json"   # Used for local execution
 
 def _get_service():
     creds = None
 
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as f:
-            creds = pickle.load(f)
+    # --- 1. ENVIRONMENT / GITHUB ACTIONS CREDENTIAL FLOW ---
+    if os.environ.get("GOOGLE_TOKEN_BASE64") and os.environ.get("GOOGLE_CREDENTIALS_BASE64"):
+        print("🤖 Running in CI/CD environment (GitHub Actions)...")
+        
+        # Write temporary credentials.json from secret
+        creds_b64 = os.environ.get("GOOGLE_CREDENTIALS_BASE64")
+        with open("credentials.json", "wb") as f:
+            f.write(base64.b64decode(creds_b64))
 
-    if not creds or not creds.valid:
+        # Reconstruct credentials object from base64 token secret
+        token_b64 = os.environ.get("GOOGLE_TOKEN_BASE64")
+        token_bytes = base64.b64decode(token_b64)
+        creds = pickle.loads(token_bytes)
+
+        # Refresh token if expired
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-        else:
-            if not os.path.exists(CLIENT_SECRETS):
-                raise FileNotFoundError(
-                    f"Missing {CLIENT_SECRETS}. "
-                    "Download it from Google Cloud Console → APIs & Services → Credentials."
-                )
-            flow  = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS, SCOPES)
-            creds = flow.run_local_server(port=0)
+            # Note: If the token refreshes in GitHub Actions, you may occasionally need
+            # to capture the print statement from logs and update your secret.
+            # updated_b64 = base64.b64encode(pickle.dumps(creds)).decode('utf-8')
+            # print(f"UPDATED REFRESHED TOKEN: {updated_b64}")
+            
+    # --- 2. LOCAL ENVIRONMENT CREDENTIAL FLOW ---
+    else:
+        print("💻 Running in local development environment...")
+        if os.path.exists(TOKEN_FILE):
+            with open(TOKEN_FILE, "rb") as f:
+                creds = pickle.load(f)
 
-        with open(TOKEN_FILE, "wb") as f:
-            pickle.dump(creds, f)
+        # If local token is missing or expired, prompt browser login
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                if not os.path.exists(CLIENT_SECRETS):
+                    raise FileNotFoundError(
+                        f"Missing {CLIENT_SECRETS}. "
+                        "Download it from Google Cloud Console → APIs & Services → Credentials."
+                    )
+                # Lock port to 8080 to prevent redirect_uri_mismatch errors
+                flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS, SCOPES)
+                creds = flow.run_local_server(port=8080)
+
+            # Cache the token locally for future local runs
+            with open(TOKEN_FILE, "wb") as f:
+                pickle.dump(creds, f)
+
+    # Clean up temporary file if it was created during CI/CD execution
+    if os.path.exists("credentials.json"):
+        os.remove("credentials.json")
 
     return build("youtube", "v3", credentials=creds)
 
@@ -54,7 +86,7 @@ def upload_video(video_path: str, title: str, description: str,
 
     body = {
         "snippet": {
-            "title":       title[:100],   # YouTube max title length
+            "title":       title[:100],   # YouTube max title length constraint
             "description": description,
             "tags":        tags or ["puns", "dadjokes", "funny", "shorts", "comedy"],
             "categoryId":  "23",          # Comedy
@@ -72,7 +104,7 @@ def upload_video(video_path: str, title: str, description: str,
         chunksize=4 * 1024 * 1024,   # 4 MB chunks
     )
 
-    request  = youtube.videos().insert(
+    request = youtube.videos().insert(
         part=",".join(body.keys()),
         body=body,
         media_body=media,
@@ -86,5 +118,5 @@ def upload_video(video_path: str, title: str, description: str,
             print(f"   Uploading… {pct}%", end="\r")
 
     video_id = response["id"]
-    print(f"✅  Uploaded → https://youtube.com/watch?v={video_id}")
+    print(f"\n✅ Uploaded → https://youtube.com/watch?v={video_id}")
     return video_id
