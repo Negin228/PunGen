@@ -1,39 +1,38 @@
-name: Daily Pun Videos
+Run python agent.py
+  python agent.py
+  shell: /usr/bin/bash -e {0}
+  env:
+    pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+    PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+    Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+    Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+    Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+    LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+    ANTHROPIC_API_KEY: ***
+❌  Video 1 failed: Ran out of input
+❌  Video 2 failed: Ran out of input
 
-on:
-  schedule:
-    - cron: "0 14 * * *"   # 9 AM ET
-    - cron: "0 22 * * *"   # 5 PM ET
-  workflow_dispatch:
+🤖  Pun Video Agent  —  2026-06-05 21:14
+    dry_run = False
 
-jobs:
-  post-videos:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+──────────────────────────────────────────────────
+  Video 1 of 2
+──────────────────────────────────────────────────
+📝  Generating joke…
+    Q: Why did the scarecrow win an award?
+    A: Because he was outstanding in his field!  🌾🏆😄
+🎬  Rendering video…
+📤  Uploading to YouTube…
+💻 Running in local development environment...
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+──────────────────────────────────────────────────
+  Video 2 of 2
+──────────────────────────────────────────────────
+📝  Generating joke…
+    Q: Why did the bicycle fall over?
+    A: It was two-tired! 🚲😴😂  🚲😴😂
+🎬  Rendering video…
+📤  Uploading to YouTube…
+💻 Running in local development environment...
 
-      - name: Install system deps
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg fonts-liberation
-
-      - name: Install Python deps
-        run: pip install -r requirements.txt
-
-      - name: Write OAuth token
-        run: echo "$YOUTUBE_TOKEN" | base64 -d > token.pickle
-        env:
-          YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_TOKEN }}
-
-      - name: Write client_secrets.json
-        run: echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > client_secrets.json
-
-      - name: Run agent
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python agent.py
+✅  Done! 0/2 videos posted today.
