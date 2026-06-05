@@ -49,8 +49,13 @@ Respond ONLY with valid JSON (no preamble, no markdown):
     raw = raw.replace("```json", "").replace("```", "").strip()
     joke = json.loads(raw)
 
-    for key in ("question", "answer", "emojis"):
+
+    for key in ("question", "answer"):
         if key not in joke or not joke[key]:
             raise ValueError(f"Missing field in joke response: {key}")
 
+    # Soft fallback if Claude occasionally forgets the emojis field
+    if "emojis" not in joke or not joke["emojis"]:
+        joke["emojis"] = "😂✨"
+    
     return joke
