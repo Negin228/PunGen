@@ -3,8 +3,19 @@ name: Daily Pun Videos
 on:
   schedule:
     - cron: "0 14 * * *"   # 9 AM ET
+    - cron: "0 16 * * *"   
+    - cron: "0 18 * * *"
     - cron: "0 20 * * *"   # 3 PM ET
     - cron: "0 2 * * *"   # 9 PM ET
+    - cron: "0 4 * * *"
+    - cron: "0 6 * * *"
+    - cron: "0 8 * * *"
+    - cron: "0 10 * * *"
+    - cron: "0 12 * * *"
+
+
+
+    
     
   workflow_dispatch:
 
