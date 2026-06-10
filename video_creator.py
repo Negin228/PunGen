@@ -56,6 +56,11 @@ def th(draw, font):
     bb = draw.textbbox((0, 0), "Ag", font=font)
     return bb[3] - bb[1]
 
+def t_offset(draw, font):
+    """Returns the internal top offset (bb[1]) PIL adds above glyphs.
+    Subtract this from any y coordinate to make text sit where you intend."""
+    return draw.textbbox((0, 0), "Ag", font=font)[1]
+
 def get_wrapped_lines(draw, text, font, max_w):
     words = text.split()
     lines, cur = [], []
@@ -155,7 +160,8 @@ def draw_animated_word_pill(img, full_text, font, center_y, t):
             word_t = t - word_delay
             progress = ease_out_cubic(word_t / 0.18)
             bounce_y = (1.0 - progress) * -45
-            draw.text((current_x, y0 + padding_y + bounce_y - 2),
+            top_off = draw.textbbox((0,0), word, font=font)[1]
+            draw.text((current_x, y0 + padding_y + bounce_y - top_off),
                       word, font=font, fill=COLOR_HEADER_TEXT)
         current_x += tw(draw, word, font) + space_w
 
@@ -164,7 +170,11 @@ def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=
     """Question card with drop shadow and word-by-word animation."""
     draw = ImageDraw.Draw(img)
     lh = int(th(draw, font) * 1.38)
-    card_h = (lh * len(lines)) + (padding * 2) - int(th(draw, font) * 0.35)
+    text_h = th(draw, font)
+    # lh*(n-1) + text_h = actual text block height (no extra gap after last line)
+    # Equal padding top and bottom gives symmetric margins inside the card.
+    text_block_h = lh * (len(lines) - 1) + text_h
+    card_h = text_block_h + (padding * 2)
 
     margin = 44
     x0 = margin
@@ -182,7 +192,8 @@ def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=
     space_w = tw(draw, " ", font)
     word_counter = 0
 
-    curr_y = y0 + padding
+    top_off = t_offset(draw, font)  # internal PIL leading above glyphs
+    curr_y = y0 + padding - top_off  # shift up so glyphs start exactly at padding
     for line in lines:
         words = line.split()
         line_w = tw(draw, line, font)
@@ -204,36 +215,36 @@ def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=
 
 def draw_answer_reveal(img, lines, center_y, font, t, reveal_start=6.5):
     """
-    Answer text in a pink pill that scales + bounces in from below.
-    Each line is its own pill for a stacked-tag look.
+    Answer text in pink pills that scale + bounce in.
+    Each line is its own pill. Padding is symmetric using cap-height only.
     """
     draw = ImageDraw.Draw(img)
-    lh = int(th(draw, font) * 1.45)
-    padding_x, padding_y = 40, 18
+    padding_x, padding_y = 40, 22
+    gap_between = 12  # vertical gap between pills
 
-    total_lines = len(lines)
-    # Lay out pills centred vertically around center_y
-    total_h = total_lines * (th(draw, font) + padding_y * 2) + (total_lines - 1) * 10
+    # pill_h is based on cap-height (th) not line-height, so padding is equal top/bottom
+    base_text_h = th(draw, font)
+    pill_h_base = base_text_h + padding_y * 2
+    total_h = len(lines) * pill_h_base + (len(lines) - 1) * gap_between
     start_y = center_y - total_h // 2
 
     for i, line in enumerate(lines):
         line_delay = reveal_start + i * 0.18
+        pill_slot_y = start_y + i * (pill_h_base + gap_between)
+        cy = pill_slot_y + pill_h_base // 2
+
         if t < line_delay:
-            start_y += th(draw, font) + padding_y * 2 + 10
             continue
 
         elapsed = t - line_delay
         scale = ease_out_back(elapsed / 0.22)
-        scale = max(0.0, min(1.15, scale))  # cap overshoot
+        scale = max(0.0, min(1.15, scale))
 
         text_w = tw(draw, line, font)
-        text_h = th(draw, font)
         pill_w = int((text_w + padding_x * 2) * scale)
-        pill_h = int((text_h + padding_y * 2) * scale)
+        pill_h = int(pill_h_base * scale)
 
         cx = W // 2
-        cy = start_y + (text_h + padding_y * 2) // 2
-
         x0 = cx - pill_w // 2
         y0 = cy - pill_h // 2
         x1 = cx + pill_w // 2
@@ -243,14 +254,14 @@ def draw_answer_reveal(img, lines, center_y, font, t, reveal_start=6.5):
             radius = min(pill_h // 2, 999)
             draw.rounded_rectangle([x0, y0, x1, y1], radius=radius,
                                    fill=COLOR_ANSWER_PILL)
-            # Scale font visually by scaling text position (PIL can't scale fonts live)
-            # Instead we draw at scale=1 but only after pill is large enough
             if scale > 0.7:
                 tx = cx - text_w // 2
-                ty = cy - text_h // 2 - 2
+                # Centre using actual glyph bbox: subtract bb[1] so the visible
+                # glyphs are exactly centred, not the bounding box with its leading.
+                bb = draw.textbbox((0, 0), line, font=font)
+                glyph_h = bb[3] - bb[1]
+                ty = cy - glyph_h // 2 - bb[1]
                 draw.text((tx, ty), line, font=font, fill=COLOR_ANSWER_TEXT)
-
-        start_y += text_h + padding_y * 2 + 10
 
 
 # --- CORE PIPELINE RENDER ENGINE ---
@@ -357,7 +368,7 @@ def create_pun_video(question, answer, output_path, music_path=None, **kwargs):
             draw.text(((W - tw(draw, handle, f_outro_bold)) // 2, int(H * 0.78)),
                       handle, font=f_outro_bold, fill=(25, 25, 35))
 
-            cta = "Subscribe Below!"   # ↓ unicode arrows look clean
+            cta = "\u2193  Subscribe Below  \u2193"   # ↓ unicode arrows look clean
             draw.text(((W - tw(draw, cta, f_outro_sub)) // 2, int(H * 0.845)),
                       cta, font=f_outro_sub, fill=COLOR_HEADER_TEXT)
             return np.array(img).astype('uint8')
