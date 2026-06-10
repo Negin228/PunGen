@@ -74,17 +74,16 @@ def run_one(index: int, used: list[str], dry_run: bool) -> str | None:
     else:
         print("📤  Uploading to YouTube…")
         
-        # --- REQUIREMENT: Title caption shows ONLY the question and hashtags ---
-        raw_title = f"{joke['question'].strip()} {HASHTAGS_STACK}"
+        # --- FIX: The title now ONLY shows the clean question + #shorts ---
+        # This gives your question maximum breathing room so it never gets truncated like in image_e31d78.png
+        title_question = joke['question'].strip()
+        title = f"{title_question} #shorts"
         
-        # Guard against YouTube's 100 character title constraint limit
-        if len(raw_title) > 100:
-            allowed_q_len = 95 - len(HASHTAGS_STACK)
-            title = f"{joke['question'].strip()[:allowed_q_len]}... {HASHTAGS_STACK}"
-        else:
-            title = raw_title
+        # Ultimate fallback safety check just in case a question is incredibly long
+        if len(title) > 100:
+            title = f"{title_question[:90]}... #shorts"
             
-        # --- REQUIREMENT: Include your precise channel subscribe URL in description ---
+        # --- Description maintains the full hashtag stack for SEO ---
         description = (
             f"🤣 {joke['question'].strip()}\n\n"
             f"Subscribe to Punderfuls for daily animations & jokes! 👇\n"
@@ -94,6 +93,7 @@ def run_one(index: int, used: list[str], dry_run: bool) -> str | None:
         
         video_id = upload_video(video_path, title, description)
 
+    
     # Clean up local file after upload
     if os.path.exists(video_path) and not dry_run:
         os.remove(video_path)
