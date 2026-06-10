@@ -58,37 +58,45 @@ def get_wrapped_lines(draw, text, font, max_w):
     if cur: lines.append(" ".join(cur))
     return lines
 
-def draw_animated_word_pill(img, full_text, font, center_y, t):
-    """Animates header words dropping into a perfectly centered container layout."""
+def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=44):
+    """Draws the question box with every single word landing accurately dead-center."""
     draw = ImageDraw.Draw(img)
-    words = full_text.split()
+    lh = int(th(draw, font) * 1.35)
+    card_h = (lh * len(lines)) + (padding * 2) - int(th(draw, font) * 0.35)
+    card_w = max_w
+
+    # FIX: Explicit, hard-coded pixel margins to stop anti-aliasing rounding errors
+    x0 = 40
+    y0 = center_y - (card_h // 2)
+    x1 = W - 40  # Symmetrically aligns perfectly with W (720)
+    y1 = y0 + card_h
     
-    text_w = tw(draw, full_text, font)
-    text_h = th(draw, font)
-    padding_x, padding_y = 44, 22
-    pill_w = text_w + (padding_x * 2)
-    pill_h = text_h + (padding_y * 2)
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=28, fill=COLOR_CARD_Q)
     
-    x0 = (W - pill_w) // 2
-    y0 = center_y - (pill_h // 2)
-    x1 = x0 + pill_w
-    y1 = y0 + pill_h
-    
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=24, fill=COLOR_HEADER_PILL)
-    
+    start_delay = 0.75
     space_w = tw(draw, " ", font)
-    # Start positioning dynamically relative to the true text block origin
-    current_x = x0 + padding_x
+    word_counter = 0
     
-    for i, word in enumerate(words):
-        word_delay = i * 0.22
-        if t >= word_delay:
-            word_t = t - word_delay
-            drop_progress = min(1.0, word_t / 0.18)
-            bounce_y = (1.0 - math.sin(drop_progress * (math.pi / 2))) * -40
-            draw.text((current_x, y0 + padding_y + bounce_y - 2), word, font=font, fill=COLOR_HEADER_TEXT)
+    curr_y = y0 + padding
+    for line in lines:
+        words = line.split()
+        line_w = tw(draw, line, font)
+        
+        # Computes the precise global frame center-point for line alignment
+        current_x = ((W - line_w) // 2)
+        
+        for word in words:
+            word_delay = start_delay + (word_counter * 0.07)
+            if t >= word_delay:
+                w_t = t - word_delay
+                fall_progress = min(1.0, w_t / 0.14)
+                ease_y = (1.0 - math.sin(fall_progress * (math.pi / 2))) * -30
+                draw.text((current_x, curr_y + ease_y), word, font=font, fill=COLOR_TEXT_Q)
+                
+            current_x += tw(draw, word, font) + space_w
+            word_counter += 1
             
-        current_x += tw(draw, word, font) + space_w
+        curr_y += lh
 
 def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=44):
     """Draws the question box with every single word landing accurately dead-center."""
