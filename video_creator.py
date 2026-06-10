@@ -11,7 +11,7 @@ except ImportError:
     raise ImportError("Run: pip install moviepy==1.0.3")
 
 # --- GLOBAL REEL DIMENSIONS (9:16 Vertical HD) ---
-W, H      = 720, 1280
+W, H      = 1440, 2560
 FPS       = 30
 DURATION  = 12.0
 
