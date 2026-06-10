@@ -19,11 +19,14 @@ from video_creator  import create_pun_video
 from youtube_uploader import upload_video
 
 # ── Config ────────────────────────────────────────────────────────────────────
-VIDEOS_PER_RUN = 2
+VIDEOS_PER_RUN = 1
 MUSIC_FILE     = "assets/funny_music.mp3"
 OUTPUT_DIR     = "videos"
 USED_FILE      = "used_jokes.json"
 
+# Exact hashtag list string required for short optimization
+HASHTAGS_STACK = "#shorts #animation #funnyshorts #dadjokes #comedy #jokeoftheday #funny #puns #comedyshorts"
+SUBSCRIBE_LINK = "https://www.youtube.com/@Punderfuls?sub_confirmation=1"
 
 # ── Joke memory ───────────────────────────────────────────────────────────────
 def load_used() -> list[str]:
@@ -55,6 +58,7 @@ def run_one(index: int, used: list[str], dry_run: bool) -> str | None:
     video_path = os.path.join(OUTPUT_DIR, f"pun_{ts}_{index}.mp4")
 
     print("🎬  Rendering video…")
+    # Passes data fields safely to avoid unexpected keyword argument crashes
     create_pun_video(
         question   = joke["question"],
         answer     = joke["answer"],
@@ -69,13 +73,25 @@ def run_one(index: int, used: list[str], dry_run: bool) -> str | None:
         print("⏭️  Dry-run: skipping YouTube upload.")
     else:
         print("📤  Uploading to YouTube…")
-        title       = joke["question"]
+        
+        # --- REQUIREMENT: Title caption shows ONLY the question and hashtags ---
+        raw_title = f"{joke['question'].strip()} {HASHTAGS_STACK}"
+        
+        # Guard against YouTube's 100 character title constraint limit
+        if len(raw_title) > 100:
+            allowed_q_len = 95 - len(HASHTAGS_STACK)
+            title = f"{joke['question'].strip()[:allowed_q_len]}... {HASHTAGS_STACK}"
+        else:
+            title = raw_title
+            
+        # --- REQUIREMENT: Include your precise channel subscribe URL in description ---
         description = (
-            f"🤣 {joke['question']}\n\n"
-            f"Answer: {joke['answer']} {joke['emojis']}\n\n"
-            f"Subscribe for 2 puns every day! 🔔\n\n"
-            f"#Puns #DadJokes #Funny #Shorts #Comedy"
+            f"🤣 {joke['question'].strip()}\n\n"
+            f"Subscribe to Punderfuls for daily animations & jokes! 👇\n"
+            f"👉 {SUBSCRIBE_LINK}\n\n"
+            f"{HASHTAGS_STACK}"
         )
+        
         video_id = upload_video(video_path, title, description)
 
     # Clean up local file after upload
