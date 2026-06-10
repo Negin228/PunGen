@@ -10,23 +10,23 @@ try:
 except ImportError:
     raise ImportError("Run: pip install moviepy==1.0.3")
 
-# --- GLOBAL REEL DIMENSIONS ---
+# --- GLOBAL REEL DIMENSIONS (9:16 Vertical HD) ---
 W, H      = 720, 1280
 FPS       = 30
 DURATION  = 12.0
 
 # --- EXACT VIDEO DESIGN PALETTE ---
-COLOR_BG          = (255, 255, 255)  
-COLOR_HEADER_PILL = (255, 222, 230)  
-COLOR_HEADER_TEXT = (215, 38, 93)    
-COLOR_CARD_Q      = (0, 0, 0)        
-COLOR_TEXT_Q      = (255, 255, 255)  
-COLOR_TEXT_A      = (0, 0, 0)        
+COLOR_BG          = (255, 255, 255)  # Pure Studio White
+COLOR_HEADER_PILL = (255, 222, 230)  # Pastel Pink Pill
+COLOR_HEADER_TEXT = (215, 38, 93)    # Deep Magenta
+COLOR_CARD_Q      = (0, 0, 0)        # Pure Obsidian Black Card
+COLOR_TEXT_Q      = (255, 255, 255)  # Card Text White
+COLOR_TEXT_A      = (0, 0, 0)        # Answer Text Pure Black
 
 def get_premium_rounded_font(size):
     """Prioritizes heavy rounded fonts to perfectly replicate the reference style."""
     paths = [
-        "assets/Fredoka-Bold.ttf",         # Confirm this exact asset exists here!
+        "assets/Fredoka-Bold.ttf",         # Ensure your font file is placed here!
         "assets/LilitaOne-Regular.ttf",     
         "C:/Windows/Fonts/ariblk.ttf",       
         "/Library/Fonts/Arial Black.ttf",    
@@ -58,17 +58,47 @@ def get_wrapped_lines(draw, text, font, max_w):
     if cur: lines.append(" ".join(cur))
     return lines
 
+def draw_animated_word_pill(img, full_text, font, center_y, t):
+    """Animates header words dropping into a perfectly centered container layout."""
+    draw = ImageDraw.Draw(img)
+    words = full_text.split()
+    
+    text_w = tw(draw, full_text, font)
+    text_h = th(draw, font)
+    padding_x, padding_y = 44, 22
+    pill_w = text_w + (padding_x * 2)
+    pill_h = text_h + (padding_y * 2)
+    
+    x0 = (W - pill_w) // 2
+    y0 = center_y - (pill_h // 2)
+    x1 = x0 + pill_w
+    y1 = y0 + pill_h
+    
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=24, fill=COLOR_HEADER_PILL)
+    
+    space_w = tw(draw, " ", font)
+    current_x = x0 + padding_x
+    
+    for i, word in enumerate(words):
+        word_delay = i * 0.22
+        if t >= word_delay:
+            word_t = t - word_delay
+            drop_progress = min(1.0, word_t / 0.18)
+            bounce_y = (1.0 - math.sin(drop_progress * (math.pi / 2))) * -40
+            draw.text((current_x, y0 + padding_y + bounce_y - 2), word, font=font, fill=COLOR_HEADER_TEXT)
+            
+        current_x += tw(draw, word, font) + space_w
+
 def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=44):
     """Draws the question box with every single word landing accurately dead-center."""
     draw = ImageDraw.Draw(img)
     lh = int(th(draw, font) * 1.35)
     card_h = (lh * len(lines)) + (padding * 2) - int(th(draw, font) * 0.35)
-    card_w = max_w
-
-    # FIX: Explicit, hard-coded pixel margins to stop anti-aliasing rounding errors
+    
+    # Symmetrical exact margins to fix the right-edge black line bug
     x0 = 40
     y0 = center_y - (card_h // 2)
-    x1 = W - 40  # Symmetrically aligns perfectly with W (720)
+    x1 = W - 40  
     y1 = y0 + card_h
     
     draw.rounded_rectangle([x0, y0, x1, y1], radius=28, fill=COLOR_CARD_Q)
@@ -82,46 +112,7 @@ def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=
         words = line.split()
         line_w = tw(draw, line, font)
         
-        # Computes the precise global frame center-point for line alignment
-        current_x = ((W - line_w) // 2)
-        
-        for word in words:
-            word_delay = start_delay + (word_counter * 0.07)
-            if t >= word_delay:
-                w_t = t - word_delay
-                fall_progress = min(1.0, w_t / 0.14)
-                ease_y = (1.0 - math.sin(fall_progress * (math.pi / 2))) * -30
-                draw.text((current_x, curr_y + ease_y), word, font=font, fill=COLOR_TEXT_Q)
-                
-            current_x += tw(draw, word, font) + space_w
-            word_counter += 1
-            
-        curr_y += lh
-
-def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=44):
-    """Draws the question box with every single word landing accurately dead-center."""
-    draw = ImageDraw.Draw(img)
-    lh = int(th(draw, font) * 1.35)
-    card_h = (lh * len(lines)) + (padding * 2) - int(th(draw, font) * 0.35)
-    card_w = max_w
-
-    x0 = (W - card_w) // 2
-    y0 = center_y - (card_h // 2)
-    x1 = x0 + card_w
-    y1 = y0 + card_h
-    
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=28, fill=COLOR_CARD_Q)
-    
-    start_delay = 0.75
-    space_w = tw(draw, " ", font)
-    word_counter = 0
-    
-    curr_y = y0 + padding
-    for line in lines:
-        words = line.split()
-        line_w = tw(draw, line, font)
-        
-        # FIX: Computes the precise global frame center-point for line alignment
+        # Computes the precise global starting x coordinate for absolute centering
         current_x = ((W - line_w) // 2)
         
         for word in words:
@@ -138,6 +129,7 @@ def draw_sequential_question_card(img, lines, center_y, font, max_w, t, padding=
         curr_y += lh
 
 def draw_clean_answer(img, lines, center_y, font):
+    """Renders the static punchline cleanly at the designated answer space."""
     draw = ImageDraw.Draw(img)
     lh = int(th(draw, font) * 1.35)
     total_h = lh * len(lines)
@@ -211,7 +203,8 @@ def create_pun_video(question, answer, output_path, music_path=None, **kwargs):
             x_h = (W - tw(draw, txt_handle, f_outro_bold)) // 2
             draw.text((x_h, int(H * 0.78)), txt_handle, font=f_outro_bold, fill=(30, 30, 30))
             
-            txt_cta = "Click Link Below to Subscribe!"
+            # Text arrows replace broken emoji glyphs to fix the blank square bug
+            txt_cta = "--> Click Link Below to Subscribe! <--"
             x_c = (W - tw(draw, txt_cta, f_outro_sub)) // 2
             draw.text((x_c, int(H * 0.84)), txt_cta, font=f_outro_sub, fill=(215, 38, 93))
         else:
