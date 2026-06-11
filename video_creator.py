@@ -16,16 +16,15 @@ FPS       = 30
 DURATION  = 12.0
 
 # --- DESIGN PALETTE ---
-COLOR_BG_TOP      = (255, 255, 255)   # Pure white
-COLOR_BG_BOTTOM   = (245, 245, 248)   # Very subtle cool-grey — barely visible
-COLOR_HEADER_PILL = (255, 210, 225)   # Pastel pink pill
-COLOR_HEADER_TEXT = (200, 30, 80)     # Deep magenta
-COLOR_CARD_Q      = (18, 18, 24)      # Near-black
-COLOR_CARD_SHADOW = (180, 180, 190)   # Neutral grey shadow — no pink tint
-COLOR_TEXT_Q      = (255, 255, 255)
-COLOR_TEXT_A      = (18, 18, 24)
-COLOR_ANSWER_PILL = (255, 210, 225)   # Answer gets the same pink pill treatment
-COLOR_ANSWER_TEXT = (200, 30, 80)     # Same magenta — unifies the design
+COLOR_BG_TOP      = (220, 240, 255)   # light blue
+COLOR_BG_BOTTOM   = (240, 220, 255)   # light purple
+COLOR_CARD_Q      = (60, 100, 220)    # bright blue instead of near-black
+COLOR_HEADER_PILL = (255, 220, 50)    # yellow
+COLOR_HEADER_TEXT = (180, 60, 0)      # warm orange
+COLOR_ANSWER_PILL = (100, 220, 100)   # bright green
+COLOR_ANSWER_TEXT = (0, 100, 0)       # dark green
+COLOR_CARD_SHADOW = (100, 80, 180)    # purple-tinted shadow to match kids theme
+COLOR_TEXT_Q      = (255, 255, 255)   # white text on blue card — unchanged
 
 
 def get_premium_rounded_font(size):
@@ -379,7 +378,7 @@ def create_pun_video(question, answer, output_path, music_path=None, **kwargs):
         img = Image.new("RGB", (W, H))
         draw_gradient_background(img)
 
-        draw_animated_word_pill(img, "Daily Pun Challenge", f_header, y_header, t)
+        draw_animated_word_pill(img, "Silly Joke Time!", f_header, y_header, t)
         draw_sequential_question_card(img, q_lines, y_question, f_body, W - 80, t)
 
         if t >= 6.5:
