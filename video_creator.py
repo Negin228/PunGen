@@ -420,9 +420,12 @@ def create_pun_video(question, answer, output_path, music_path=None, **kwargs):
         clip = clip.set_audio(CompositeAudioClip(audio_tracks))
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+
     clip.write_videofile(
-        output_path, fps=FPS, codec="libx264", audio_codec="aac",
-        threads=4, preset="fast", ffmpeg_params=["-crf", "22"], logger=None,
-    )
+            output_path, fps=FPS, codec="libx264", audio_codec="aac",
+            threads=4, preset="fast", ffmpeg_params=["-crf", "22"],
+            logger=None,)
+        
     clip.close()
     return output_path
