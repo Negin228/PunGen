@@ -16,8 +16,8 @@ FPS       = 30
 DURATION  = 12.0
 
 # --- DESIGN PALETTE ---
-COLOR_BG_TOP      = (220, 240, 255)   # light blue
-COLOR_BG_BOTTOM   = (240, 220, 255)   # light purple
+COLOR_BG_TOP      = (255, 255, 255)   # light blue
+COLOR_BG_BOTTOM   = (255, 255, 255)   # light purple
 COLOR_CARD_Q      = (60, 100, 220)    # bright blue instead of near-black
 COLOR_HEADER_PILL = (255, 220, 50)    # yellow
 COLOR_HEADER_TEXT = (180, 60, 0)      # warm orange
