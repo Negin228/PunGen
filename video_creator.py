@@ -121,15 +121,17 @@ def draw_pill(draw, text, font, center_x, center_y,
 
 
 def draw_card_shadow(img, x0, y0, x1, y1, radius=28, blur=18, shadow_color=COLOR_CARD_SHADOW):
-    """Paints a blurred shadow behind the question card for depth."""
     shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(shadow)
-    # Offset shadow down and right slightly
-    sx0, sy0, sx1, sy1 = x0 + 6, y0 + 10, x1 + 6, y1 + 10
+    sx0, sy0, sx1, sy1 = x0 + 4, y0 + 8, x1 + 0, y1 + 4  
     sd.rounded_rectangle([sx0, sy0, sx1, sy1], radius=radius,
                          fill=(*shadow_color, 120))
     shadow = shadow.filter(ImageFilter.GaussianBlur(radius=blur))
-    img.paste(Image.alpha_composite(img.convert("RGBA"), shadow).convert("RGB"))
+    
+    # Convert base image to RGBA, composite, convert back — then paste in place
+    base_rgba = img.convert("RGBA")
+    composited = Image.alpha_composite(base_rgba, shadow)
+    img.paste(composited.convert("RGB"))  # same as before but explicit (0,0)
 
 
 def draw_animated_word_pill(img, full_text, font, center_y, t):
