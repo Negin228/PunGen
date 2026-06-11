@@ -369,7 +369,7 @@ def create_pun_video(question, answer, output_path, music_path=None, **kwargs):
             draw.text(((W - tw(draw, handle, f_outro_bold)) // 2, int(H * 0.78)),
                       handle, font=f_outro_bold, fill=(25, 25, 35))
 
-            cta = "Subscribe Below"   # ↓ unicode arrows look clean
+            cta = "More jokes coming soon! Subscribe!"   # ↓ unicode arrows look clean
             draw.text(((W - tw(draw, cta, f_outro_sub)) // 2, int(H * 0.845)),
                       cta, font=f_outro_sub, fill=COLOR_HEADER_TEXT)
             return np.array(img).astype('uint8')
