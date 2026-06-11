@@ -14,10 +14,33 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from moviepy.editor import VideoFileClip 
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_FILE = "token.pickle"
 CLIENT_SECRETS = "client_secrets.json"   # Used for local execution
+
+def extract_thumbnail(video_path: str) -> str:
+    """Grabs a frame at t=0.5s — question visible, answer not yet shown."""
+    thumb_path = video_path.replace(".mp4", "_thumb.jpg")
+    clip = VideoFileClip(video_path)
+    clip.save_frame(thumb_path, t=0.5)
+    clip.close()
+    return thumb_path
+
+
+def _set_thumbnail(youtube, video_id: str, thumb_path: str):
+    try:
+        youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=MediaFileUpload(thumb_path, mimetype="image/jpeg"),
+        ).execute()
+        print("🖼️  Thumbnail set.")
+    except Exception as e:
+        print(f"⚠️  Thumbnail upload failed (channel verified?): {e}")
+    finally:
+        if os.path.exists(thumb_path):
+            os.remove(thumb_path)
 
 def _get_service():
     creds = None
@@ -119,4 +142,8 @@ def upload_video(video_path: str, title: str, description: str,
 
     video_id = response["id"]
     print(f"\n✅ Uploaded → https://youtube.com/watch?v={video_id}")
+    # Set thumbnail — question only, answer hidden
+    thumb_path = extract_thumbnail(video_path)
+    _set_thumbnail(youtube, video_id, thumb_path)
+
     return video_id
