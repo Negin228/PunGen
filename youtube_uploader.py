@@ -24,7 +24,7 @@ def extract_thumbnail(video_path: str) -> str:
     """Grabs a frame at t=0.5s — question visible, answer not yet shown."""
     thumb_path = video_path.replace(".mp4", "_thumb.jpg")
     clip = VideoFileClip(video_path)
-    clip.save_frame(thumb_path, t=0.5)
+    clip.save_frame(thumb_path, t=2)
     clip.close()
     return thumb_path
 
